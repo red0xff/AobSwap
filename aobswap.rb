@@ -3,13 +3,8 @@
 
 require'io/console';
 require'colorize';
-# scan file looking for AOB, and remplace
-#options : -i : interactive
-#              -n k : remplace kth occurence
-# supports wildcards
 
-params = ARGV
-if params.include?('-h');
+if ARGV.include?('-h');
 label = <<-LABEL
 
        d8888          888       .d8888b.                                  
@@ -28,29 +23,29 @@ LABEL
 	puts "Usage: ./aobswap.rb [OPTIONS] aob1 aob2 file\nOptions :\n-o output : Copy the contents of file to output, and write modifications to it instead\n\n-i : Ask for confirmation before changing data (interactive)\n\n--architecture=arch : Set the architecture for decompilation, will be used with rasm2\n\n--bits=number : Set architecture bits, will also be used with rasm2\n\n--disassemble=number : Set the number of bytes to disassemble on each request\n\n-h : Display this help and exit\n\nRemarks\n\naob1 can contain the wildcard * (nibbles are supported)";
 	exit 0;
 end
-interactive = params.include?('-i');
-output = params[-1];
-if ind = params.find_index{|param| param == '-o'}
-	output = params[ind+1];
+interactive = ARGV.include?('-i');
+output = ARGV[-1];
+if ind = ARGV.find_index{|param| param == '-o'}
+	output = ARGV[ind+1];
 end
 architecture = 'x86';
 bits = 32;
-if arch = params.detect{|param| param =~ /--architecture=.+/}
+if arch = ARGV.detect{|param| param =~ /--architecture=.+/}
 	architecture = arch[/(?<=architecture=).+$/];
 end
 
-if b = params.detect{|param| param =~ /--bits=\d+/}
+if b = ARGV.detect{|param| param =~ /--bits=\d+/}
 	bits = b[/\d+/].to_i;
 end
 
 d = 30; # number of bytes on each disassembly;
-if dis = params.detect{|param| param =~ /--disassemble=\d+/}
+if dis = ARGV.detect{|param| param =~ /--disassemble=\d+/}
 	d = dis[/\d+/].to_i;
 end
 
-aobs = params.select{|w| w =~ /^(?:[0-9a-f\*]{2}\s*)*[0-9a-f\*]{2}$/};
+aobs = ARGV.select{|w| w =~ /^(?:[0-9a-f\*]{2}\s*)*[0-9a-f\*]{2}$/};
 aobs.map!{|aob| aob.gsub(/\s+/, '').each_char.each_slice(2).map(&:join)};
-raise ArgumentError if aobs.count != 2 || aobs.any?{|aob| aob[-1].length.odd?};
+raise ArgumentError, 'Wrong array of byte formats' if aobs.count != 2 || aobs.any?{|aob| aob[-1].length.odd?};
 scan, remplace = aobs;
 scan.map!{|e|
 	case e
@@ -61,7 +56,7 @@ scan.map!{|e|
 	end
 }
 remplace = remplace.map{|e| e.to_i(16).chr}.join;
-file = params[-1];
+file = ARGV[-1];
 f = File.open(file, 'r+b');
 data = f.read;
 if file != output

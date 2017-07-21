@@ -19,8 +19,8 @@ d88P     888  "Y88P"  88888P"   "Y8888P"   "Y8888888P"  "Y888888 88888P"
                                                                  888      
                                                                  888      
 LABEL
-	puts label.green;
-	puts "Usage: ./aobswap.rb [OPTIONS] aob1 aob2 file\nOptions :\n-o output : Copy the contents of file to output, and write modifications to it instead\n\n-i : Ask for confirmation before changing data (interactive)\n\n--architecture=arch : Set the architecture for decompilation, will be used with rasm2\n\n--bits=number : Set architecture bits, will also be used with rasm2\n\n--disassemble=number : Set the number of bytes to disassemble on each request\n\n-h : Display this help and exit\n\nRemarks\n\naob1 can contain the wildcard * (nibbles are supported)";
+	puts label.colorize(String.colors.sample);
+	puts "Usage: \n./aobswap.rb [OPTIONS] aob1 aob2 file\n./aobswap.rb [OPTIONS] aob1 file\nOptions :\n-o output : Copy the contents of file to output, and write modifications to it instead\n\n-i : Ask for confirmation before changing data (interactive)\n\n--architecture=arch : Set the architecture for decompilation, will be used with rasm2\n\n--bits=number : Set architecture bits, will also be used with rasm2\n\n--disassemble=number : Set the number of bytes to disassemble on each request\n\n-h : Display this help and exit\n\nRemarks\n\naob1 and aob2 can contain the wildcard * (nibbles are supported)";
 	exit 0;
 end
 interactive = ARGV.include?('-i');
@@ -45,7 +45,7 @@ end
 
 aobs = ARGV.select{|w| w =~ /^(?:[0-9a-f\*]{2}\s*)*[0-9a-f\*]{2}$/};
 aobs.map!{|aob| aob.gsub(/\s+/, '').each_char.each_slice(2).map(&:join)};
-raise ArgumentError, 'Wrong array of byte formats' if aobs.count != 2 || aobs.any?{|aob| aob[-1].length.odd?};
+raise ArgumentError, 'Wrong array of byte formats' if aobs.any?{|aob| aob[-1].length.odd?};
 scan, remplace = aobs;
 scan.map!{|e|
 	case e
@@ -55,7 +55,7 @@ scan.map!{|e|
 		when /\*[0-9a-f]/ then [nil, e[1].to_i(16)];
 	end
 }
-remplace = remplace.map{|e| e.to_i(16).chr}.join;
+remplace = remplace.map{|e| e == '**' ? nil : e.to_i(16)} if remplace;
 file = ARGV[-1];
 f = File.open(file, 'r+b');
 data = f.read;
@@ -82,7 +82,7 @@ count = scan.count;
 	
 	if found then
 		# just to print it
-		# show 10 bytes each time
+		# show d bytes each time
 		foundaob = data[i, d].each_char.with_index.map{|c, ind|
 			c1, c2 = c.ord.to_s(16).rjust(2,?0).chars;
 			if scan[ind] && scan[ind].is_a?(Array)
@@ -94,15 +94,16 @@ count = scan.count;
 		raw = data[i, d].each_char.map{|c| c.ord.to_s(16).rjust(2,?0)}.join;
 		puts "[#{'FOUND'.green}] at offset #{i.to_s.green} : pattern : \"#{foundaob}\"";
 		if interactive then
-			puts 'remplace? (y/n) (d to disassemble)';
+			puts 'remplace? (y/n) (d to disassemble, e to exit)';
 			resp = nil;
 			disassembled = false;
 			loop{
 			
 				resp = IO.console.getch.downcase.intern;
 				break if resp == :y || resp == :n;
+				exit 0 if resp == :e;
 				if !disassembled && resp == :d
-					disassembly = %x(rasm2 -a #{architecture} -b #{bits} -d "#{raw}").gsub(/\b(?:0x)?\d+\b/){|num| num.green}.gsub(/\b(?:[re]?(?:ax|bx|cx|dx|sp|bp|si|di|ip)|es|fs|gs|ss|st\(\d\)|xmm\d|[abcd][hl])\b/){|reg| reg.light_blue};
+					disassembly = %x(rasm2 -a #{architecture} -b #{bits} -d "#{raw}").gsub(/\b(?:0x)?[\da-f]+\b/){|num| num.green}.gsub(/\b(?:[re]?(?:ax|bx|cx|dx|sp|bp|si|di|ip)|es|fs|gs|ss|st\(\d\)|xmm\d|[abcd][hl])\b/){|reg| reg.light_blue};
 					puts "--------------DISASSEMBLY AT OFFSET #{i}-----------------"
 					puts disassembly;
 					disassembled = true;
@@ -113,7 +114,25 @@ count = scan.count;
 		end
 		writes += 1;
 		f.pos = i;
-		f.write(remplace);
+		if remplace then
+			remplace.each{|byte|
+				if byte
+					f.write(byte.chr);
+				else
+					f.pos += 1;
+				end
+			}
+		else
+			puts 'Enter the bytes to write at that offset';
+			rplc = STDIN.gets.chomp.gsub(/\s+/,'').each_char.each_slice(2).map{|sl| sl = sl.join; sl == '**' ? nil : sl.to_i(16)}; # replacement
+			rplc.each{|byte|
+				if byte
+					f.write(byte.chr);
+				else
+					f.pos += 1;
+				end
+			}
+		end
 	end
 }
 puts "[#{'DONE'.green}]\nSwapped #{writes.to_s.green} AOBs\nOutput saved to #{output.green}";

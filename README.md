@@ -11,3 +11,7 @@ linux script that scans a file for an array of bytes, and remplaces them with an
 
 - Support for wildcards in the array of bytes to scan for, even nibbles are supported.
 - Interactive mode that prompts the user before editing, with an option to disassemble the found memory region.
+
+# Demonstration
+
+https://www.youtube.com/watch?v=aAWPRsq_puI

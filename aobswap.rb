@@ -4,7 +4,7 @@
 require'io/console';
 require'colorize';
 
-if ARGV.include?('-h');
+if ARGV.include?('-h') || ARGV.empty?
 label = <<-LABEL
 
        d8888          888       .d8888b.                                  

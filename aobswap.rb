@@ -43,8 +43,8 @@ if dis = ARGV.detect{|param| param =~ /--disassemble=\d+/}
 	d = dis[/\d+/].to_i;
 end
 
-aobs = ARGV.select{|w| w =~ /^(?:[0-9a-f\*]{2}\s*)*[0-9a-f\*]{2}$/};
-aobs.map!{|aob| aob.gsub(/\s+/, '').each_char.each_slice(2).map(&:join)};
+aobs = ARGV.select{|w| w =~ /^(?:[0-9a-f\*]{2}\s*)*[0-9a-f\*]{2}$/i};
+aobs.map!{|aob| aob.gsub(/\s+/, '').each_char.each_slice(2).map(&:join).downcase};
 raise ArgumentError, 'Wrong array of byte formats' if aobs.any?{|aob| aob[-1].length.odd?};
 scan, remplace = aobs;
 scan.map!{|e|
